@@ -1,0 +1,63 @@
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: hippo-multi-repo
+spec:
+  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:centos8-14.2-0
+  postgresVersion: 14
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+        storageClassName: longhorn
+      replicas: 2
+
+  backups:
+    pgbackrest:
+      # restore:
+      #   enabled: false
+      #   repoName: repo1
+      #   options:
+      #   - --type=time
+      #   - --target="2022-03-24 10:39+08"    
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:centos8-2.36-1
+      configuration:
+      - secret:
+          name: pgo-multi-repo-creds
+      global:
+        ## repo2-path, recommend for setting this variable is /pgbackrest/$NAMESPACE/$CLUSTER_NAME/repoN.
+        repo2-path: /pgbackrest/postgres-operator/hippo-multi-repo/repo2
+        repo1-retention-full: "3"
+        repo1-retention-full-type: time        
+        repo2-retention-full: "1"
+        repo2-retention-full-type: time        
+      manual:
+        repoName: repo2
+        options:
+         - --type=full
+      repos:
+      - name: repo1
+        schedules:
+          ##  take a full backup once a day at 1am and take incremental backups every four hours
+          full: "0 1 * * *"
+          incremental: "0 */4 * * *"      
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+            storageClassName: longhorn
+      - name: repo2
+        schedules:
+          ##  take a full backup once a day at 1am and take incremental backups every four hours
+          full: "0 1 * * *"
+          incremental: "0 */1 * * *"       
+        s3:
+          bucket: "tespkg-k8s-pgo-bucket"
+          endpoint: "s3.eu-west-1.amazonaws.com"
+          region: eu-west-1
