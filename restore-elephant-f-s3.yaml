@@ -1,0 +1,51 @@
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: elephant
+spec:
+  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:centos8-14.2-0
+  postgresVersion: 14
+
+  dataSource:
+    pgbackrest:
+      stanza: db
+      configuration:
+      - secret:
+          name: pgo-multi-repo-creds
+      global:
+        repo2-path: /pgbackrest/postgres-operator/hippo-multi-repo/repo2
+      repo:
+        name: repo2
+        s3:
+          bucket: "tespkg-k8s-pgo-bucket"
+          endpoint: "s3.eu-west-1.amazonaws.com"
+          region: eu-west-1
+
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+        storageClassName: standard
+
+  backups:
+    pgbackrest:
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:centos8-2.36-1
+      configuration:
+      - secret:
+          name: pgo-multi-repo-creds
+      global:
+        repo1-path: /pgbackrest/postgres-operator/elephant/repo1
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+            storageClassName: standard
+

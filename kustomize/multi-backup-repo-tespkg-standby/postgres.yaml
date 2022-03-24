@@ -1,8 +1,12 @@
 apiVersion: postgres-operator.crunchydata.com/v1beta1
 kind: PostgresCluster
 metadata:
-  name: hippo-s3
+  name: hippo-multi-repo-standby
 spec:
+  standby:
+    enabled: true
+    repoName: repo2
+
   image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:centos8-14.2-0
   postgresVersion: 14
   instances:
@@ -19,21 +23,13 @@ spec:
       image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:centos8-2.36-1
       configuration:
       - secret:
-          name: pgo-s3-creds
+          name: pgo-multi-repo-creds
       global:
-        repo1-path: /pgbackrest/postgres-operator/hippo-s3/repo1
-        repo1-retention-full: "1"
-        repo1-retention-full-type: time
-      manual:
-        repoName: repo1
-        options:
-         - --type=full          
+        repo2-path: /pgbackrest/postgres-operator/hippo-multi-repo/repo2
+
       repos:
-      - name: repo1
+      - name: repo2
         s3:
           bucket: "tespkg-k8s-pgo-bucket"
           endpoint: "s3.eu-west-1.amazonaws.com"
           region: eu-west-1
-        schedules:
-          full: "0 1 * * *"
-          incremental: "0 */4 * * *"           

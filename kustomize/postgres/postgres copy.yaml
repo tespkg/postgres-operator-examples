@@ -1,0 +1,89 @@
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: hippo
+spec:
+  # users:
+  #   - name: rhino
+  #     databases:
+  #       - zoo
+      # options: "CREATEDB CREATEROLE"
+  service:
+    type: NodePort
+  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:centos8-14.2-0
+  postgresVersion: 14
+  instances:
+    - name: instance1
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "2Gi"      
+      dataVolumeClaimSpec:
+        storageClassName: standard
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                postgres-operator.crunchydata.com/cluster: hippo
+                postgres-operator.crunchydata.com/instance-set: instance1
+    # - name: instance2
+    #   replicas: 1
+    #   dataVolumeClaimSpec:
+    #     storageClassName: standard
+    #     accessModes:
+    #     - "ReadWriteOnce"
+    #     resources:
+    #       requests:
+    #         storage: 10Gi                          
+  backups:
+    pgbackrest:
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:centos8-2.36-1
+      configuration:
+      - secret:
+          name: pgo-s3-creds
+      global:
+        repo1-retention-full: "2"
+        repo1-retention-full-type: time      
+        repo2-retention-full: "1"
+        repo2-retention-full-type: time      
+        repo2-path: /pgbackrest/postgres-operator/hippo/repo2
+      manual:
+        repoName: repo1
+        options:
+         - --type=full         
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            storageClassName: standard
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+        schedules:
+          full: "0 1 * * *"
+          incremental: "0 */4 * * *"      
+
+      - name: repo2
+        s3:
+          bucket: "tespkg-k8s-pgo-bucket"
+          endpoint: "s3.amazonaws.com:443"
+          region: eu-west-1                
+  patroni:
+    dynamicConfiguration:
+      postgresql:
+        parameters:
+          max_parallel_workers: 2
+          max_worker_processes: 2
+          shared_buffers: 1GB
+          # SHOW work_mem;
+          work_mem: 2MB              
