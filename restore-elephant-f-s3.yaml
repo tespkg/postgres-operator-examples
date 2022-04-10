@@ -13,7 +13,7 @@ spec:
       - secret:
           name: pgo-multi-repo-creds
       global:
-        repo2-path: /pgbackrest/postgres-operator/hippo-multi-repo/repo2
+        repo2-path: /pgbackrest/postgres-operator/shaojun/repo2
       repo:
         name: repo2
         s3:
@@ -28,7 +28,7 @@ spec:
         resources:
           requests:
             storage: 1Gi
-        storageClassName: standard
+        # storageClassName: standard
 
   backups:
     pgbackrest:
@@ -47,5 +47,5 @@ spec:
             resources:
               requests:
                 storage: 1Gi
-            storageClassName: standard
+            # storageClassName: standard
 
