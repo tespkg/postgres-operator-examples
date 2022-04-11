@@ -1,5 +1,5 @@
-mc config host add s3bak https://s3.amazonaws.com  xxxx xxxx
-mc ls s3bak/tespkg-k8s-pgo-bucket/pgbackrest/postgres-operator/hippo-multi-repo/repo2
+mc config host add pgs3 https://s3.amazonaws.com  xxxx xxxx
+mc ls pgs3/tespkg-k8s-pgo-bucket/pgbackrest/postgres-operator/hippo-multi-repo/repo2
 
 ## install PGO
 kubectl apply -k kustomize/install
@@ -37,7 +37,7 @@ spec:
 note, this does not the trigger on-off full backup,
 you have to do that by adding the postgres-operator.crunchydata.com/pgbackrest-backup annotation to your custom resource. The best way to set this annotation is with a timestamp, so you know when you initialized the backup.
 ```
-kubectl annotate -n postgres-operator postgrescluster hippo \
+kubectl annotate -n postgres-operator postgrescluster hippo-multi-repo \
   postgres-operator.crunchydata.com/pgbackrest-backup="$(date)"
 ```
 
@@ -46,6 +46,45 @@ If you intend to take one-off backups with similar settings in the future, you c
 To re-run the command above, you will need to add the --overwrite flag so the annotation’s value can be updated, i.e.
 
 ```
-kubectl annotate -n postgres-operator postgrescluster hippo --overwrite \
+kubectl annotate -n postgres-operator postgrescluster hippo-multi-repo --overwrite \
   postgres-operator.crunchydata.com/pgbackrest-backup="$(date)"
+
+kubectl -n postgres-operator get postgrescluster hippo-multi-repo -o jsonpath='{.metadata.annotations."postgres-operator.crunchydata.com/pgbackrest-backup"}'
+```
+## shutdown cluster, and then, create a new cluster and restore data from s3
+
+shutdown
+```
+kubectl patch postgrescluster/hippo-multi-repo -n postgres-operator --type merge \
+  --patch '{"spec":{"shutdown": true}}'
+```
+
+restore to new cluster
+
+```
+kubectl -n postgres-operator apply -f restore-elephant-f-s3.yaml
+```
+
+## path elephant cluster backup policy
+copy restore-elephant-f-s3.yaml to set-elephant-backup-repo1.yaml
+edit set-elephant-backup-repo1.yaml
+delete spec.dataSource
+add below content
+```
+  backups:
+    pgbackrest:
+      global:
+        repo1-retention-full: "3"
+        repo1-retention-full-type: time
+        # repo2-path: /pgbackrest/postgres-operator/shaojun/elephant/repo1
+      repos:
+      - name: repo1
+        schedules:
+          full: "*/10 * * * *"
+          incremental: "*/5 * * * *"
+```
+apply set-elephant-backup-repo1.yaml
+
+```
+kubectl -n  postgres-operator apply -f set-elephant-backup-repo1.yaml
 ```
