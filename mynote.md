@@ -169,3 +169,20 @@ echo '\l' |psql
 ```
 
 
+restore
+
+update restore-elephant-pitr.yaml as below
+```
+spec:
+  dataSource:
+    postgresCluster:
+      clusterNamespace: postgres-operator
+      clusterName: elephant
+      repoName: repo1
+      options: 
+      - --type=time 
+      - --target="2022-04-12 02:25:07+00" 
+```
+```
+kubectl apply -f restore-elephant-pitr.yaml
+```
