@@ -2,6 +2,7 @@ apiVersion: postgres-operator.crunchydata.com/v1beta1
 kind: PostgresCluster
 metadata:
   name: elephant-pitr
+  namespace: debug
 spec:
   dataSource:
     postgresCluster:
@@ -10,7 +11,7 @@ spec:
       repoName: repo1
       options: 
       - --type=time 
-      - --target="2022-04-12 02:25:07+00"      
+      - --target="2022-04-12 02:25:07+00"
   image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:centos8-14.2-0
   postgresVersion: 14
   instances:

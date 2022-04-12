@@ -168,9 +168,13 @@ echo '\l' |psql
 (6 rows)
 ```
 
+if need to archive elephant cluster
+```
+k exec -it elephant-00-79cc-0 -- psql
+select pg_switch_wal();
+```
 
 restore
-
 update restore-elephant-pitr.yaml as below
 ```
 spec:
