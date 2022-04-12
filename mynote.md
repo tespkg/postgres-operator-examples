@@ -76,7 +76,6 @@ add below content
       global:
         repo1-retention-full: "3"
         repo1-retention-full-type: time
-        # repo2-path: /pgbackrest/postgres-operator/shaojun/elephant/repo1
       repos:
       - name: repo1
         schedules:
@@ -88,3 +87,85 @@ apply set-elephant-backup-repo1.yaml
 ```
 kubectl -n  postgres-operator apply -f set-elephant-backup-repo1.yaml
 ```
+## test backup pitr
+
+```sh
+PRIMARY_POD=$(kubectl -n postgres-operator get pods \
+  --selector=postgres-operator.crunchydata.com/role=master \
+  -o jsonpath='{.items[*].metadata.labels.postgres-operator\.crunchydata\.com/instance}') && echo $PRIMARY_POD
+kubectl exec -it $PRIMARY_POD-0 -- bash
+
+echo 'select current_timestamp'| psql
+```
+
+```
+       current_timestamp
+-------------------------------
+ 2022-04-12 02:24:14.73141+00
+(1 row)
+
+```
+
+list db
+```
+echo '\l' |psql
+```
+
+```
+                                                                            List of databases
+       Name       |  Owner   | Encoding |   Collate   |    Ctype    |        Access privileges        |  Size   | Tablespace |                Description
+------------------+----------+----------+-------------+-------------+---------------------------------+---------+------------+--------------------------------------------
+ elephant         | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =Tc/postgres                   +| 8577 kB | pg_default |
+                  |          |          |             |             | postgres=CTc/postgres          +|         |            |
+                  |          |          |             |             | elephant=CTc/postgres           |         |            |
+ hippo-multi-repo | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =Tc/postgres                   +| 8577 kB | pg_default |
+                  |          |          |             |             | postgres=CTc/postgres          +|         |            |
+                  |          |          |             |             | "hippo-multi-repo"=CTc/postgres |         |            |
+ postgres         | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 |                                 | 8649 kB | pg_default | default administrative connection database
+ t1               | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 |                                 | 8577 kB | pg_default |
+ t1_elephant      | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 |                                 | 8577 kB | pg_default |
+ template0        | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =c/postgres                    +| 8401 kB | pg_default | unmodifiable empty database
+                  |          |          |             |             | postgres=CTc/postgres           |         |            |
+ template1        | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =c/postgres                    +| 8577 kB | pg_default | default template for new databases
+                  |          |          |             |             | postgres=CTc/postgres           |         |            |
+(7 rows)
+```
+
+```
+dropdb t1_elephant
+echo 'select current_timestamp'| psql
+```
+
+```
+       current_timestamp
+-------------------------------
+ 2022-04-12 02:25:07.112981+00
+(1 row)
+```
+
+list db
+```
+
+echo '\l' |psql
+```
+
+```
+                                          List of databases
+       Name       |  Owner   | Encoding |   Collate   |    Ctype    |        Access privileges
+------------------+----------+----------+-------------+-------------+---------------------------------
+ elephant         | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =Tc/postgres                   +
+                  |          |          |             |             | postgres=CTc/postgres          +
+                  |          |          |             |             | elephant=CTc/postgres
+ hippo-multi-repo | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =Tc/postgres                   +
+                  |          |          |             |             | postgres=CTc/postgres          +
+                  |          |          |             |             | "hippo-multi-repo"=CTc/postgres
+ postgres         | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 |
+ t1               | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 |
+ template0        | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =c/postgres                    +
+                  |          |          |             |             | postgres=CTc/postgres
+ template1        | postgres | UTF8     | en_US.utf-8 | en_US.utf-8 | =c/postgres                    +
+                  |          |          |             |             | postgres=CTc/postgres
+(6 rows)
+```
+
+

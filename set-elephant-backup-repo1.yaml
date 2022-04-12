@@ -1,0 +1,54 @@
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: elephant
+spec:
+  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:centos8-14.2-0
+  postgresVersion: 14
+
+  # dataSource:
+  #   pgbackrest:
+  #     stanza: db
+  #     configuration:
+  #     - secret:
+  #         name: pgo-multi-repo-creds
+  #     global:
+  #       repo2-path: /pgbackrest/postgres-operator/shaojun/repo2
+  #     repo:
+  #       name: repo2
+  #       s3:
+  #         bucket: "tespkg-k8s-pgo-bucket"
+  #         endpoint: "s3.eu-west-1.amazonaws.com"
+  #         region: eu-west-1
+
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+        # storageClassName: standard
+
+  backups:
+    pgbackrest:
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:centos8-2.36-1
+      global:
+      ## keep full backup for 3 days
+        repo1-retention-full: "3"
+        repo1-retention-full-type: time
+      repos:
+      - name: repo1
+        schedules:
+        ##  take a full backup very 10Min and take incremental backups every 5Min
+          full: "*/10 * * * *"
+          incremental: "*/5 * * * *"
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+            # storageClassName: standard
+
